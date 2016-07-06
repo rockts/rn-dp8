@@ -23,16 +23,16 @@ class MovieList extends React.Component {
     this.state = {
       movies: [],
       loaded: false,
-      count: 20,
-      start: 0,
-      total: 0,
+      count: 3,
+      page: 0,
+      noResult: false,
     };
 
     this.dataSource = new ListView.DataSource({
       rowHasChanged: (row1, row2) => row1 !== row2
     });
 
-    this.REQUEST_URL = 'https://api.douban.com/v2/movie/top250';
+    this.REQUEST_URL = 'http://dp8.dev/api/product';
 
     this.fetchData();
 
@@ -40,11 +40,10 @@ class MovieList extends React.Component {
 
   requestURL(
     url = this.REQUEST_URL,
-    count = this.state.count,
-    start = this.state.start
+    page = this.state.page
   ) {
     return (
-      `${url}?count=${count}&start=${start}`
+      `${url}?page=${page}`
     );
   }
 
@@ -52,13 +51,12 @@ class MovieList extends React.Component {
     fetch(this.requestURL())
       .then(response => response.json())
       .then(responseData => {
-        let newStart = responseData.start + responseData.count;
         this.setState({
-          movies: responseData.subjects,
+          movies: responseData,
           loaded: true,
-          total: responseData.total,
-          start: newStart,
+          page: this.state.page + 1
         });
+
       })
       .done();
   }
@@ -80,17 +78,17 @@ class MovieList extends React.Component {
         <View style={styles.item}>
           <View style={styles.itemImage}>
             <Image
-              source={{uri: movie.images.large}}
+              source={{uri: movie.field_product_image.replace(/(\r\n|\n|\r )/gm, '')}}
               style={styles.image}
              />
           </View>
           <View style={styles.itemContent}>
             <Text style={styles.itemHeader}>{movie.title}</Text>
             <Text style={styles.itemMeta}>
-              {movie.original_title} ( {movie.year} )
+              {movie.body} ( {movie.field_product_categories} )
             </Text>
             <Text style={styles.redText}>
-              {movie.rating.average}
+              {/*movie.rating.average*/}
             </Text>
           </View>
         </View>
@@ -102,11 +100,17 @@ class MovieList extends React.Component {
     fetch(this.requestURL())
       .then(response => response.json())
       .then(responseData => {
-        let newStart = responseData.start + responseData.count;
         this.setState({
-          movies: [...this.state.movies, ...responseData.subjects],
-          start: newStart
+          movies: [...this.state.movies, ...responseData],
+          page: this.state.page + 1
         });
+
+        if (responseData.length === 0) {
+          this.setState({
+            noResult: true
+          });
+        }
+
       })
       .done();
   }
@@ -116,13 +120,11 @@ class MovieList extends React.Component {
       `到底了！开始：${this.state.start}，总共：${this.state.total}`
     );
 
-    if (this.state.total > this.state.start) {
-      this.loadMore();
-    }
+    this.loadMore();
   }
 
   renderFooter() {
-    if (this.state.total > this.state.start) {
+    if (!this.state.noResult) {
       return (
         <View
           style={{
